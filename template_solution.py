@@ -1,3 +1,6 @@
+import os 
+os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
+
 from pathlib import Path
 
 import numpy as np
@@ -77,7 +80,7 @@ def load_data(**kwargs):
 
     # Visualize the training data if needed
     # Set to False if you don't want to save the images
-    if True:
+    if False:
         # Create the output directory if it doesn't exist
         if not Path("train_image_output").exists():
             Path("train_image_output").mkdir()
@@ -144,11 +147,7 @@ def training(train_data_input, train_data_label, **kwargs):
             x, y = x.to(device), y.to(device)
             optimizer.zero_grad()
             output = model(x)
-            #loss = criterion(output, y)
-            loss = criterion( # train only on masked centres, not the whole images
-                output[:, :, 10:18, 10:18],
-                y[:, :, 10:18, 10:18]
-            )
+            loss = criterion(output, y)
             loss.backward()
             optimizer.step()
 
@@ -157,8 +156,8 @@ def training(train_data_input, train_data_label, **kwargs):
     return model
 
 
-# TODO: define a model. Here, a basic MLP model is defined. You can completely
-# change this model - and are encouraged to do so.
+#TODO: define a model. Here, a basic MLP model is defined. You can completely
+#change this model - and are encouraged to do so.
 class Model(nn.Module):
     """
     Implement your model here.
@@ -171,22 +170,21 @@ class Model(nn.Module):
         super().__init__()
         # Encoder to compress image 
         self.encoder = nn.Sequential(
-            nn.Conv2d(1, 16, 3, padding=1),   # (B, 16, 28, 28)
+            nn.Conv2d(1, 16, 3, padding=1),   
             nn.ReLU(),
-            nn.MaxPool2d(2),                  # (B, 16, 14, 14)
+            nn.MaxPool2d(2),                  
 
-            nn.Conv2d(16, 32, 3, padding=1),  # (B, 32, 14, 14)
+            nn.Conv2d(16, 32, 3, padding=1),  
             nn.ReLU(),
-            nn.MaxPool2d(2)                   # (B, 32, 7, 7)
+            nn.MaxPool2d(2)                   
         )
 
         # Decoder to reconsturct image 
         self.decoder = nn.Sequential(
-            nn.ConvTranspose2d(32, 16, 2, stride=2),  # (B, 16, 14, 14)
+            nn.ConvTranspose2d(32, 16, 2, stride=2),  
             nn.ReLU(),
 
-            nn.ConvTranspose2d(16, 1, 2, stride=2),   # (B, 1, 28, 28)
-            nn.Sigmoid()  # pixel values between 0 and 1
+            nn.ConvTranspose2d(16, 1, 2, stride=2), 
         )
 
     def forward(self, x):
@@ -207,6 +205,7 @@ class Model(nn.Module):
         x = self.encoder(x)
         x = self.decoder(x)
         return x
+    
 
 def testing(model, test_data_input):
     """
