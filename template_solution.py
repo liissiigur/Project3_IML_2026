@@ -139,7 +139,7 @@ def training(train_data_input, train_data_label, **kwargs):
 
     # TODO: The value of n_epochs is just a placeholder and likely needs to be
     # changed
-    n_epochs = kwargs.get("n_epochs", 20)
+    n_epochs = kwargs.get("n_epochs", 5)
 
     for epoch in range(n_epochs):
         epoch_losses = []
@@ -168,50 +168,74 @@ def training(train_data_input, train_data_label, **kwargs):
 # change this model - and are encouraged to do so.
 class Model(nn.Module):
     """
-    Implement your model here.
+    Small U-Net style model with skip connections.
     """
 
     def __init__(self):
-        """
-        The constructor of the model.
-        """
         super().__init__()
-        # Encoder to compress image
-        self.encoder = nn.Sequential(
+
+        self.enc1 = nn.Sequential(
             nn.Conv2d(1, 16, 3, padding=1),
             nn.ReLU(),
-            nn.MaxPool2d(2),
+            nn.Conv2d(16, 16, 3, padding=1),
+            nn.ReLU()
+        )
+        self.pool1 = nn.MaxPool2d(2)
+
+        self.enc2 = nn.Sequential(
             nn.Conv2d(16, 32, 3, padding=1),
             nn.ReLU(),
-            nn.MaxPool2d(2),
+            nn.Conv2d(32, 32, 3, padding=1),
+            nn.ReLU()
+        )
+        self.pool2 = nn.MaxPool2d(2)
+
+        self.bottleneck = nn.Sequential(
+            nn.Conv2d(32, 64, 3, padding=1),
+            nn.ReLU(),
+            nn.Conv2d(64, 64, 3, padding=1),
+            nn.ReLU()
         )
 
-        # Decoder to reconsturct image
-        self.decoder = nn.Sequential(
-            nn.ConvTranspose2d(32, 16, 2, stride=2),
+        self.up2 = nn.ConvTranspose2d(64, 32, 2, stride=2)
+        self.dec2 = nn.Sequential(
+            nn.Conv2d(64, 32, 3, padding=1),
             nn.ReLU(),
-            nn.ConvTranspose2d(16, 1, 2, stride=2),
+            nn.Conv2d(32, 32, 3, padding=1),
+            nn.ReLU()
+        )
+
+        self.up1 = nn.ConvTranspose2d(32, 16, 2, stride=2)
+        self.dec1 = nn.Sequential(
+            nn.Conv2d(32, 16, 3, padding=1),
+            nn.ReLU(),
+            nn.Conv2d(16, 16, 3, padding=1),
+            nn.ReLU()
+        )
+
+        self.out = nn.Sequential(
+            nn.Conv2d(16, 1, 1),
             nn.Sigmoid()
         )
 
     def forward(self, x):
-        """
-        The forward pass of the model.
+        e1 = self.enc1(x)
+        p1 = self.pool1(e1)
 
-        input: x: torch.Tensor, the input to the model
+        e2 = self.enc2(p1)
+        p2 = self.pool2(e2)
 
-        output: x: torch.Tensor, the output of the model
-        """
-        # # Flatten the image in the last two dimensions
-        # x = x.view(x.shape[0], -1)
-        # x = self.fc(x)
-        # x = F.relu(x)
-        # # Reshape the image to the original shape
-        # x = x.view(x.shape[0], 1, 28, 28)
+        b = self.bottleneck(p2)
 
-        x = self.encoder(x)
-        x = self.decoder(x)
-        return x
+        d2 = self.up2(b)
+        d2 = torch.cat([d2, e2], dim=1)
+        d2 = self.dec2(d2)
+
+        d1 = self.up1(d2)
+        d1 = torch.cat([d1, e1], dim=1)
+        d1 = self.dec1(d1)
+
+        return self.out(d1)
 
 
 def testing(model, test_data_input):
