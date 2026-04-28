@@ -169,7 +169,25 @@ class Model(nn.Module):
         The constructor of the model.
         """
         super().__init__()
-        self.fc = nn.Linear(784, 784)
+        # Encoder to compress image 
+        self.encoder = nn.Sequential(
+            nn.Conv2d(1, 16, 3, padding=1),   # (B, 16, 28, 28)
+            nn.ReLU(),
+            nn.MaxPool2d(2),                  # (B, 16, 14, 14)
+
+            nn.Conv2d(16, 32, 3, padding=1),  # (B, 32, 14, 14)
+            nn.ReLU(),
+            nn.MaxPool2d(2)                   # (B, 32, 7, 7)
+        )
+
+        # Decoder to reconsturct image 
+        self.decoder = nn.Sequential(
+            nn.ConvTranspose2d(32, 16, 2, stride=2),  # (B, 16, 14, 14)
+            nn.ReLU(),
+
+            nn.ConvTranspose2d(16, 1, 2, stride=2),   # (B, 1, 28, 28)
+            nn.Sigmoid()  # pixel values between 0 and 1
+        )
 
     def forward(self, x):
         """
@@ -179,14 +197,16 @@ class Model(nn.Module):
 
         output: x: torch.Tensor, the output of the model
         """
-        # Flatten the image in the last two dimensions
-        x = x.view(x.shape[0], -1)
-        x = self.fc(x)
-        x = F.relu(x)
-        # Reshape the image to the original shape
-        x = x.view(x.shape[0], 1, 28, 28)
-        return x
+        # # Flatten the image in the last two dimensions
+        # x = x.view(x.shape[0], -1)
+        # x = self.fc(x)
+        # x = F.relu(x)
+        # # Reshape the image to the original shape
+        # x = x.view(x.shape[0], 1, 28, 28)
 
+        x = self.encoder(x)
+        x = self.decoder(x)
+        return x
 
 def testing(model, test_data_input):
     """
