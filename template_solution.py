@@ -1,21 +1,22 @@
-import os 
+import os
+
 os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
 
 from pathlib import Path
 
-import numpy as np
-from tqdm import tqdm
 import matplotlib.pyplot as plt
+import numpy as np
 import torch
-from torch.utils.data import DataLoader, TensorDataset
 import torch.nn as nn
 import torch.nn.functional as F
+from torch.utils.data import DataLoader, TensorDataset
+from tqdm import tqdm
 
 """
 README FIRST
 
 The below code is a template for the solution. You can change the code according
-to your preferences, but the testing function has to save the output of your 
+to your preferences, but the testing function has to save the output of your
 model on the test data as it does in this template. This output must be submitted.
 
 Replace the dummy code with your own code in the TODO sections.
@@ -26,7 +27,7 @@ to understand how it is performing. But the template does not include this
 functionality.
 Link for wandb:
 https://docs.wandb.ai/quickstart/
-Link for tensorboard: 
+Link for tensorboard:
 https://pytorch.org/tutorials/recipes/recipes/tensorboard_with_pytorch.html
 """
 
@@ -71,12 +72,12 @@ def load_data(**kwargs):
 
     ########################################
     # TODO: Given the original training images, create the input images and the
-    # label images to train your model. 
+    # label images to train your model.
     # Replace the two placholder lines below (which currently just copy the
     # training data) with your own implementation.
-    train_data_label = train_data.clone() # labels are the uncorrupted images 
+    train_data_label = train_data.clone()  # labels are the uncorrupted images
     train_data_input = train_data.clone()
-    train_data_input[:, :, 10:18, 10:18] = 0 # block the center of images for input 
+    train_data_input[:, :, 10:18, 10:18] = 0  # block the center of images for input
 
     # Visualize the training data if needed
     # Set to False if you don't want to save the images
@@ -141,9 +142,9 @@ def training(train_data_input, train_data_label, **kwargs):
     n_epochs = kwargs.get("n_epochs", 20)
 
     for epoch in range(n_epochs):
-        for x, y in tqdm(
-            data_loader, desc=f"Training Epoch {epoch}", leave=False
-        ):
+        epoch_losses = []
+
+        for x, y in tqdm(data_loader, desc=f"Training Epoch {epoch}", leave=False):
             x, y = x.to(device), y.to(device)
             optimizer.zero_grad()
             output = model(x)
@@ -151,13 +152,16 @@ def training(train_data_input, train_data_label, **kwargs):
             loss.backward()
             optimizer.step()
 
-        print(f"Epoch {epoch} loss: {loss.item()}")
+            epoch_losses.append(loss.item())
+
+        mean_loss = sum(epoch_losses) / len(epoch_losses)
+        print(f"Epoch {epoch} loss: {mean_loss:.4f}")
 
     return model
 
 
-#TODO: define a model. Here, a basic MLP model is defined. You can completely
-#change this model - and are encouraged to do so.
+# TODO: define a model. Here, a basic MLP model is defined. You can completely
+# change this model - and are encouraged to do so.
 class Model(nn.Module):
     """
     Implement your model here.
@@ -168,23 +172,21 @@ class Model(nn.Module):
         The constructor of the model.
         """
         super().__init__()
-        # Encoder to compress image 
+        # Encoder to compress image
         self.encoder = nn.Sequential(
-            nn.Conv2d(1, 16, 3, padding=1),   
+            nn.Conv2d(1, 16, 3, padding=1),
             nn.ReLU(),
-            nn.MaxPool2d(2),                  
-
-            nn.Conv2d(16, 32, 3, padding=1),  
+            nn.MaxPool2d(2),
+            nn.Conv2d(16, 32, 3, padding=1),
             nn.ReLU(),
-            nn.MaxPool2d(2)                   
+            nn.MaxPool2d(2),
         )
 
-        # Decoder to reconsturct image 
+        # Decoder to reconsturct image
         self.decoder = nn.Sequential(
-            nn.ConvTranspose2d(32, 16, 2, stride=2),  
+            nn.ConvTranspose2d(32, 16, 2, stride=2),
             nn.ReLU(),
-
-            nn.ConvTranspose2d(16, 1, 2, stride=2), 
+            nn.ConvTranspose2d(16, 1, 2, stride=2),
         )
 
     def forward(self, x):
@@ -205,7 +207,7 @@ class Model(nn.Module):
         x = self.encoder(x)
         x = self.decoder(x)
         return x
-    
+
 
 def testing(model, test_data_input):
     """
@@ -259,8 +261,7 @@ def testing(model, test_data_input):
     save_data = np.zeros_like(save_data_uint8)
     save_data[:, :, 10:18, 10:18] = save_data_uint8[:, :, 10:18, 10:18]
 
-    np.savez_compressed(
-        "submit_this_test_data_output.npz", data=save_data)
+    np.savez_compressed("submit_this_test_data_output.npz", data=save_data)
 
     # You can plot the output if you want
     # Set to False if you don't want to save the images
@@ -292,7 +293,7 @@ def main():
     # Load the data
     train_data_input, train_data_label, test_data_input = load_data()
     # Train the model
-    model = training(train_data_input, train_data_label)
+    model = training(train_data_input, train_data_label, batch_size=5)
 
     # Test the model (this also generates the submission file)
     # The name of the submission file is submit_this_test_data_output.npz
