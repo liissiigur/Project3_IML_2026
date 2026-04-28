@@ -62,13 +62,13 @@ def load_data(**kwargs):
     train_data = np.load("train_data.npz")["data"]
 
     # Make the training data a tensor
-    train_data = torch.tensor(train_data, dtype=torch.float32)
+    train_data = torch.tensor(train_data, dtype=torch.float32) / 255.0
 
     # Load the test data
     test_data_input = np.load("test_data.npz")["data"]
 
     # Make the test data a tensor
-    test_data_input = torch.tensor(test_data_input, dtype=torch.float32)
+    test_data_input = torch.tensor(test_data_input, dtype=torch.float32) / 255.0
 
     ########################################
     # TODO: Given the original training images, create the input images and the
@@ -191,6 +191,7 @@ class Model(nn.Module):
             nn.ConvTranspose2d(32, 16, 2, stride=2),
             nn.ReLU(),
             nn.ConvTranspose2d(16, 1, 2, stride=2),
+            nn.Sigmoid()
         )
 
     def forward(self, x):
@@ -256,7 +257,8 @@ def testing(model, test_data_input):
     # Save the output
     test_data_output = test_data_output.numpy()
     # Ensure all values are in the range [0, 255]
-    save_data_clipped = np.clip(test_data_output, 0, 255)
+    #save_data_clipped = np.clip(test_data_output, 0, 255)
+    save_data_clipped = np.clip(test_data_output * 255, 0, 255) # from normalized back to 0-255
     # Convert to uint8
     # Ensure your model outputs values in the [0, 255] range before this step! If you normalized your data to [0, 1], you must multiply by 255 before saving.
     save_data_uint8 = save_data_clipped.astype(np.uint8)
@@ -297,7 +299,7 @@ def main():
     # Load the data
     train_data_input, train_data_label, test_data_input = load_data()
     # Train the model
-    model = training(train_data_input, train_data_label, batch_size=5)
+    model = training(train_data_input, train_data_label)
 
     # Test the model (this also generates the submission file)
     # The name of the submission file is submit_this_test_data_output.npz
