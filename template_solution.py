@@ -115,27 +115,27 @@ def training(train_data_input, train_data_label, **kwargs):
 
     # TODO: Dummy criterion - change this to the correct loss function
     # https://pytorch.org/docs/stable/nn.html#loss-functions
-    criterion = lambda x, y: torch.mean((x))
+    criterion = torch.nn.MSELoss()
     # TODO: Dummy optimizer - change this to a more suitable optimizer
-    optimizer = torch.optim.SGD(model.parameters())
+    optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
 
     # TODO: Correctly setup the dataloader - the below is just a placeholder
     # Also consider that you might not want to use the entire dataset for
     # training alone
     # (batch_size needs to be changed)
-    batch_size = 1
+    batch_size = kwargs.get("batch_size", 64)
     dataset = TensorDataset(train_data_input, train_data_label)
     # Consider the shuffle parameter and other parameters of the DataLoader
     # class (see
     # https://pytorch.org/docs/stable/data.html#torch.utils.data.DataLoader)
-    data_loader = DataLoader(dataset, batch_size=batch_size)
+    data_loader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
 
     # Training loop
     # TODO: Modify the training loop in case you need to
 
     # TODO: The value of n_epochs is just a placeholder and likely needs to be
     # changed
-    n_epochs = 1
+    n_epochs = kwargs.get("n_epochs", 20)
 
     for epoch in range(n_epochs):
         for x, y in tqdm(
@@ -144,7 +144,11 @@ def training(train_data_input, train_data_label, **kwargs):
             x, y = x.to(device), y.to(device)
             optimizer.zero_grad()
             output = model(x)
-            loss = criterion(output, y)
+            #loss = criterion(output, y)
+            loss = criterion( # train only on masked centres, not the whole images
+                output[:, :, 10:18, 10:18],
+                y[:, :, 10:18, 10:18]
+            )
             loss.backward()
             optimizer.step()
 
