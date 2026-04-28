@@ -148,7 +148,11 @@ def training(train_data_input, train_data_label, **kwargs):
             x, y = x.to(device), y.to(device)
             optimizer.zero_grad()
             output = model(x)
-            loss = criterion(output, y)
+
+            loss_global = criterion(output, y)
+            loss_centro = criterion(output[:, :, 10:18, 10:18], y[:, :, 10:18, 10:18])
+            loss = loss_global + (5.0 * loss_centro)
+
             loss.backward()
             optimizer.step()
 
